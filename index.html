@@ -1,0 +1,1118 @@
+<!--
+# Instagram Follower Tracker — Setup (GitHub Pages)
+#
+# 1. Create a new PRIVATE repo on github.com (e.g. "ig-tracker")
+# 2. Clone it: git clone https://github.com/YOUR_USERNAME/ig-tracker
+# 3. Copy this index.html into the repo root
+# 4. git add index.html && git commit -m "init" && git push
+# 5. Go to repo Settings → Pages → Source: Deploy from branch → main → / (root) → Save
+# 6. Your app will be live at https://YOUR_USERNAME.github.io/ig-tracker
+#
+# Note: private repos can use Pages on free GitHub accounts
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram Follower Tracker</title>
+  <meta name="description" content="Track who unfollowed you on Instagram over time." />
+  <meta name="theme-color" content="#0a0a0a" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/jszip@3/dist/jszip.min.js"></script>
+  <script src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #191919;
+      --border: #1e1e1e;
+      --border-light: #2a2a2a;
+      --text: #e8e8e8;
+      --text-muted: #888888;
+      --text-dim: #555555;
+      --accent: #e1306c;
+      --accent-glow: rgba(225, 48, 108, 0.15);
+      --green: #3dd68c;
+      --green-glow: rgba(61, 214, 140, 0.15);
+      --red: #ef4444;
+      --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #root { min-height: 100dvh; }
+
+    /* ---- Scrollbar ---- */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+    /* ---- Layout ---- */
+    .app { max-width: 480px; margin: 0 auto; padding: 16px; min-height: 100dvh; }
+
+    /* ---- Upload Screen ---- */
+    .upload-screen { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; }
+
+    .logo-section { text-align: center; }
+    .logo-section h1 {
+      font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent), #c13584, #833ab4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-section p { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+
+    /* ---- Drop Zone ---- */
+    .dropzone {
+      border: 2px dashed var(--border-light);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--surface);
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 2;
+    }
+    .dropzone-icon { font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: 0.8; }
+    .dropzone-label { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+    .dropzone-hint { color: var(--text-muted); font-size: 0.8rem; }
+
+    .dropzone-compact {
+      padding: 16px;
+      display: flex; align-items: center; gap: 12px;
+      text-align: left;
+    }
+    .dropzone-compact .dropzone-icon { font-size: 1.5rem; margin-bottom: 0; flex-shrink: 0; }
+    .dropzone-compact .dropzone-text { flex: 1; }
+    .dropzone-compact .dropzone-label { font-size: 0.85rem; margin-bottom: 0; }
+    .dropzone-compact .dropzone-hint { font-size: 0.75rem; }
+
+    /* ---- Instructions ---- */
+    .instructions {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .instructions h2 {
+      font-size: 0.9rem; font-weight: 600; margin-bottom: 16px;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .instructions ol { list-style: none; counter-reset: steps; display: flex; flex-direction: column; gap: 12px; }
+    .instructions li {
+      counter-increment: steps;
+      display: flex; gap: 12px; align-items: flex-start;
+      font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;
+    }
+    .instructions li::before {
+      content: counter(steps);
+      flex-shrink: 0; width: 24px; height: 24px;
+      background: var(--accent-glow); color: var(--accent);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono);
+    }
+    .instructions li strong { color: var(--text); font-weight: 500; }
+
+    /* ---- Header bar ---- */
+    .header-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 0 8px;
+    }
+    .header-bar h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+    .follower-count {
+      font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700;
+    }
+    .follower-delta {
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500;
+      padding: 2px 8px; border-radius: 6px; margin-left: 8px;
+    }
+    .delta-negative { color: var(--accent); background: var(--accent-glow); }
+    .delta-positive { color: var(--green); background: var(--green-glow); }
+    .delta-zero { color: var(--text-muted); background: var(--surface2); }
+    .follower-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ---- Tabs ---- */
+    .tab-bar {
+      display: flex; gap: 4px; padding: 4px;
+      background: var(--surface); border-radius: var(--radius-sm);
+      margin: 16px 0;
+    }
+    .tab-btn {
+      flex: 1; padding: 8px 0; border: none; background: transparent;
+      color: var(--text-muted); font-family: var(--font-body);
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      border-radius: 6px; transition: all 0.2s ease;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { background: var(--surface2); color: var(--text); }
+
+    /* ---- Unfollowers tab ---- */
+    .search-input {
+      width: 100%; padding: 10px 12px 10px 36px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: var(--font-body); font-size: 0.85rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-dim); }
+    .search-wrap { position: relative; margin-bottom: 12px; }
+    .search-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); font-size: 0.85rem; pointer-events: none;
+    }
+
+    .unfollow-list { display: flex; flex-direction: column; gap: 2px; }
+    .unfollow-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px; background: var(--surface);
+      border-radius: var(--radius-sm); transition: background 0.15s;
+    }
+    .unfollow-row:hover { background: var(--surface2); }
+    .unfollow-username {
+      font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500;
+      color: var(--accent); text-decoration: none;
+    }
+    .unfollow-username:hover { text-decoration: underline; }
+    .unfollow-dates {
+      font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;
+    }
+    .unfollow-count-badge {
+      font-family: var(--font-mono); font-size: 0.7rem;
+      color: var(--text-dim); background: var(--surface2);
+      padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-left: 8px;
+    }
+
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--text-muted);
+    }
+    .empty-state-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+    .empty-state-text { font-size: 0.85rem; }
+
+    /* ---- Timeline tab ---- */
+    .chart-container { background: var(--surface); border-radius: var(--radius); padding: 16px 8px 8px; margin-bottom: 16px; }
+    .summary-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius-sm); padding: 14px 12px;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: var(--font-mono); font-size: 1.25rem; font-weight: 700;
+    }
+    .stat-label {
+      font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* ---- Snapshots tab ---- */
+    .snapshot-list { display: flex; flex-direction: column; gap: 2px; }
+    .snapshot-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px; background: var(--surface); border-radius: var(--radius-sm);
+    }
+    .snapshot-date { font-size: 0.85rem; font-weight: 500; }
+    .snapshot-count {
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+    }
+    .snapshot-baseline {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--accent); background: var(--accent-glow);
+      padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+    }
+    .delete-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); padding: 4px 10px;
+      border-radius: 6px; font-size: 0.75rem; cursor: pointer;
+      font-family: var(--font-body); transition: all 0.15s;
+    }
+    .delete-btn:hover { border-color: var(--red); color: var(--red); }
+
+    .storage-bar-wrap {
+      margin-top: 16px; padding: 14px;
+      background: var(--surface); border-radius: var(--radius-sm);
+    }
+    .storage-bar-label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .storage-bar-track {
+      height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+    }
+    .storage-bar-fill {
+      height: 100%; border-radius: 3px; transition: width 0.3s ease;
+      background: linear-gradient(90deg, var(--accent), #c13584);
+    }
+
+    /* ---- Snapshot mini list (upload screen) ---- */
+    .snapshots-mini { display: flex; flex-direction: column; gap: 8px; }
+    .snapshots-mini-title {
+      font-size: 0.8rem; color: var(--text-muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* ---- Spinner ---- */
+    .spinner-overlay {
+      position: fixed; inset: 0; background: rgba(10,10,10,0.85);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 100; gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ---- Toasts ---- */
+    .toast-container {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 200; display: flex; flex-direction: column; gap: 8px;
+      width: calc(100% - 32px); max-width: 400px; pointer-events: none;
+    }
+    .toast {
+      padding: 12px 16px; border-radius: var(--radius-sm);
+      font-size: 0.8rem; font-weight: 500;
+      animation: toastIn 0.3s ease forwards;
+      pointer-events: auto; text-align: center;
+    }
+    .toast-success { background: var(--green); color: #0a0a0a; }
+    .toast-error { background: var(--red); color: #fff; }
+    .toast-warn { background: #f59e0b; color: #0a0a0a; }
+    .toast-exit { animation: toastOut 0.3s ease forwards; }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
+
+    /* ---- Confirm dialog ---- */
+    .confirm-overlay {
+      position: fixed; inset: 0; background: rgba(10,10,10,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 150; padding: 16px;
+    }
+    .confirm-dialog {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+      max-width: 340px; width: 100%;
+    }
+    .confirm-dialog h3 { font-size: 1rem; margin-bottom: 8px; }
+    .confirm-dialog p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn {
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      font-family: var(--font-body); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; border: none; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ---- Recharts overrides ---- */
+    .recharts-cartesian-grid line { stroke: var(--border); }
+    .recharts-text { fill: var(--text-muted) !important; font-family: var(--font-mono) !important; font-size: 0.7rem !important; }
+
+    /* ---- Responsive ---- */
+    @media (min-width: 768px) {
+      .app { max-width: 560px; padding: 24px; }
+      .dropzone { padding: 56px 32px; }
+      .summary-stats { gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-type="module">
+    /* ================================================================
+       Instagram Follower Tracker — Single-file React App
+       ================================================================ */
+
+    const { useState, useEffect, useCallback, useRef, useMemo } = React;
+    const {
+      ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid
+    } = Recharts;
+
+    // ── Constants ──────────────────────────────────────────────────
+    const STORAGE_KEY = 'ig_snapshots';
+    const MAX_STORAGE_BYTES = 4 * 1024 * 1024; // 4 MB
+    const FOLLOWERS_PATH = 'connections/followers_and_following/followers_1.json';
+    const FOLLOWERS_PATH_ALT = 'followers_and_following/followers_1.json';
+    const FOLLOWERS_PATH_ALT2 = 'followers_1.json';
+
+    // ── Helpers ────────────────────────────────────────────────────
+    function generateId() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxx-xxxx-xxxx'.replace(/x/g, () =>
+        ((Math.random() * 16) | 0).toString(16)
+      );
+    }
+
+    function formatDate(ts) {
+      return new Date(ts).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      });
+    }
+
+    function formatDateShort(ts) {
+      return new Date(ts).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric',
+      });
+    }
+
+    function sameDay(ts1, ts2) {
+      return new Date(ts1).toDateString() === new Date(ts2).toDateString();
+    }
+
+    function estimateStorageBytes(snapshots) {
+      try {
+        const json = JSON.stringify(snapshots);
+        return new Blob([json]).size;
+      } catch { return 0; }
+    }
+
+    // ── Storage ────────────────────────────────────────────────────
+    function loadSnapshots() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch { return []; }
+    }
+
+    function saveSnapshots(snapshots) {
+      const sorted = [...snapshots].sort((a, b) => a.uploadedAt - b.uploadedAt);
+      let json = JSON.stringify(sorted);
+      let bytes = new Blob([json]).size;
+
+      // Evict oldest (but never index 0 = baseline) if over limit
+      const evictable = [...sorted];
+      while (bytes > MAX_STORAGE_BYTES && evictable.length > 1) {
+        evictable.splice(1, 1); // remove second-oldest
+        json = JSON.stringify(evictable);
+        bytes = new Blob([json]).size;
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEY, json);
+        return { ok: true, snapshots: evictable, evicted: sorted.length - evictable.length };
+      } catch (e) {
+        return { ok: false, error: e.message, snapshots: sorted, evicted: 0 };
+      }
+    }
+
+    // ── ZIP Parser ─────────────────────────────────────────────────
+    async function parseZip(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+
+      // Try multiple paths
+      let entry = zip.file(FOLLOWERS_PATH)
+                || zip.file(FOLLOWERS_PATH_ALT)
+                || zip.file(FOLLOWERS_PATH_ALT2);
+
+      // Also search for any file matching the name
+      if (!entry) {
+        const allFiles = Object.keys(zip.files);
+        const match = allFiles.find(f => f.endsWith('followers_1.json'));
+        if (match) entry = zip.file(match);
+      }
+
+      if (!entry) {
+        throw new Error(
+          `Could not find followers_1.json in the ZIP.\n` +
+          `Expected path: ${FOLLOWERS_PATH}\n` +
+          `Files found: ${Object.keys(zip.files).slice(0, 10).join(', ')}${Object.keys(zip.files).length > 10 ? '...' : ''}`
+        );
+      }
+
+      const text = await entry.async('string');
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(
+          'Failed to parse followers JSON.\n' +
+          'Expected an array of objects like:\n' +
+          '{ "string_list_data": [{ "value": "username", "timestamp": 1234567890 }] }'
+        );
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error(
+          'Unexpected JSON format — expected an array at the top level.\n' +
+          'Got: ' + typeof data
+        );
+      }
+
+      const followers = data
+        .map(item => {
+          try { return item.string_list_data[0].value; }
+          catch { return null; }
+        })
+        .filter(Boolean);
+
+      if (followers.length === 0) {
+        throw new Error('Parsed 0 followers from the file. The JSON structure may have changed.');
+      }
+
+      return followers;
+    }
+
+    // ── Unfollow Detection ─────────────────────────────────────────
+    function detectUnfollows(snapshots) {
+      const events = [];
+      const sorted = [...snapshots].sort((a, b) => a.uploadedAt - b.uploadedAt);
+
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const current = new Set(sorted[i].followers);
+        const next = new Set(sorted[i + 1].followers);
+
+        for (const username of current) {
+          if (!next.has(username)) {
+            events.push({
+              username,
+              lastSeenAt: sorted[i].uploadedAt,
+              detectedAt: sorted[i + 1].uploadedAt,
+            });
+          }
+        }
+      }
+
+      // Sort by most recently detected first
+      events.sort((a, b) => b.detectedAt - a.detectedAt);
+      return events;
+    }
+
+    // ── Toast System ───────────────────────────────────────────────
+    let toastIdCounter = 0;
+
+    function ToastContainer({ toasts, removeToast }) {
+      return (
+        <div className="toast-container">
+          {toasts.map(t => (
+            <div
+              key={t.id}
+              className={`toast toast-${t.type} ${t.exiting ? 'toast-exit' : ''}`}
+              onClick={() => removeToast(t.id)}
+            >
+              {t.message}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function useToasts() {
+      const [toasts, setToasts] = useState([]);
+
+      const addToast = useCallback((message, type = 'success', duration = 3500) => {
+        const id = ++toastIdCounter;
+        setToasts(prev => [...prev, { id, message, type, exiting: false }]);
+        setTimeout(() => {
+          setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+          setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+          }, 300);
+        }, duration);
+        return id;
+      }, []);
+
+      const removeToast = useCallback((id) => {
+        setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+        setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== id));
+        }, 300);
+      }, []);
+
+      return { toasts, addToast, removeToast };
+    }
+
+    // ── Confirm Dialog ─────────────────────────────────────────────
+    function ConfirmDialog({ title, message, onConfirm, onCancel }) {
+      return (
+        <div className="confirm-overlay" onClick={onCancel}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <h3>{title}</h3>
+            <p>{message}</p>
+            <div className="confirm-actions">
+              <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+              <button className="btn btn-primary" onClick={onConfirm}>Continue</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Spinner ────────────────────────────────────────────────────
+    function SpinnerOverlay({ text }) {
+      return (
+        <div className="spinner-overlay">
+          <div className="spinner" />
+          <span className="spinner-text">{text || 'Parsing ZIP...'}</span>
+        </div>
+      );
+    }
+
+    // ── Drop Zone ──────────────────────────────────────────────────
+    function DropZone({ onFile, compact }) {
+      const [dragover, setDragover] = useState(false);
+      const inputRef = useRef(null);
+
+      function handleDrag(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function handleDragEnter(e) {
+        handleDrag(e);
+        setDragover(true);
+      }
+
+      function handleDragLeave(e) {
+        handleDrag(e);
+        setDragover(false);
+      }
+
+      function handleDrop(e) {
+        handleDrag(e);
+        setDragover(false);
+        const file = e.dataTransfer.files[0];
+        if (file) onFile(file);
+      }
+
+      function handleChange(e) {
+        const file = e.target.files[0];
+        if (file) onFile(file);
+        e.target.value = '';
+      }
+
+      if (compact) {
+        return (
+          <div
+            className={`dropzone dropzone-compact ${dragover ? 'dragover' : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDrag}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input type="file" accept=".zip" onChange={handleChange} ref={inputRef} />
+            <span className="dropzone-icon">{"\u{1F4E5}"}</span>
+            <div className="dropzone-text">
+              <div className="dropzone-label">Add new snapshot</div>
+              <div className="dropzone-hint">Drop ZIP or click to browse</div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div
+          className={`dropzone ${dragover ? 'dragover' : ''}`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDrag}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input type="file" accept=".zip" onChange={handleChange} ref={inputRef} />
+          <span className="dropzone-icon">{"\u{1F4E6}"}</span>
+          <div className="dropzone-label">Drop your Instagram ZIP here</div>
+          <div className="dropzone-hint">or click to browse files</div>
+        </div>
+      );
+    }
+
+    // ── Instructions Panel ─────────────────────────────────────────
+    function InstructionsPanel() {
+      return (
+        <div className="instructions">
+          <h2>How to export your data</h2>
+          <ol>
+            <li>
+              Open Instagram &rarr; <strong>Profile</strong> &rarr; <strong>Menu</strong> &rarr; <strong>Settings</strong> &rarr; <strong>Account Centre</strong>
+            </li>
+            <li>
+              <strong>Your information and permissions</strong> &rarr; <strong>Download your information</strong>
+            </li>
+            <li>
+              Select <strong>"Some of your information"</strong> &rarr; check <strong>Followers and following</strong>
+            </li>
+            <li>
+              Set format to <strong>JSON</strong> and date range to <strong>All time</strong>
+            </li>
+            <li>
+              Request download, wait for the email, then <strong>drop the ZIP here</strong>
+            </li>
+          </ol>
+        </div>
+      );
+    }
+
+    // ── Upload Screen ──────────────────────────────────────────────
+    function UploadScreen({ snapshots, onFile }) {
+      return (
+        <div className="upload-screen">
+          <div className="logo-section">
+            <h1>Instagram Follower Tracker</h1>
+            <p>Upload your data exports to track unfollowers over time</p>
+          </div>
+
+          <DropZone onFile={onFile} />
+          <InstructionsPanel />
+
+          {snapshots.length > 0 && (
+            <div className="snapshots-mini">
+              <div className="snapshots-mini-title">
+                Stored snapshots ({snapshots.length})
+              </div>
+              {snapshots.map(s => (
+                <div key={s.id} className="snapshot-row">
+                  <div>
+                    <div className="snapshot-date">{formatDate(s.uploadedAt)}</div>
+                    <div className="snapshot-count">{s.followers.length.toLocaleString()} followers</div>
+                  </div>
+                </div>
+              ))}
+              {snapshots.length === 1 && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
+                  Upload one more snapshot to start tracking unfollowers
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Unfollowers Tab ────────────────────────────────────────────
+    function UnfollowersTab({ snapshots }) {
+      const [search, setSearch] = useState('');
+      const unfollows = useMemo(() => detectUnfollows(snapshots), [snapshots]);
+
+      const filtered = useMemo(() => {
+        if (!search.trim()) return unfollows;
+        const q = search.toLowerCase().trim();
+        return unfollows.filter(u => u.username.toLowerCase().includes(q));
+      }, [unfollows, search]);
+
+      return (
+        <div>
+          <div className="search-wrap">
+            <span className="search-icon">{"\u{1F50D}"}</span>
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Search usernames..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">
+                {unfollows.length === 0 ? "\u{1F389}" : "\u{1F50D}"}
+              </span>
+              <div className="empty-state-text">
+                {unfollows.length === 0
+                  ? 'No unfollowers detected yet'
+                  : 'No results matching your search'}
+              </div>
+            </div>
+          ) : (
+            <div className="unfollow-list">
+              {filtered.map((u, i) => (
+                <div key={`${u.username}-${u.detectedAt}-${i}`} className="unfollow-row">
+                  <div>
+                    <a
+                      className="unfollow-username"
+                      href={`https://instagram.com/${u.username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      @{u.username}
+                    </a>
+                    <div className="unfollow-dates">
+                      unfollowed between {formatDate(u.lastSeenAt)} and {formatDate(u.detectedAt)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {filtered.length > 0 && (
+            <div style={{
+              textAlign: 'center', padding: '12px', fontSize: '0.75rem',
+              color: 'var(--text-dim)', fontFamily: 'var(--font-mono)'
+            }}>
+              {filtered.length} unfollow event{filtered.length !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Timeline Tab ───────────────────────────────────────────────
+    function CustomTooltip({ active, payload, label }) {
+      if (!active || !payload || !payload.length) return null;
+      return (
+        <div style={{
+          background: '#111', border: '1px solid #1e1e1e',
+          borderRadius: 8, padding: '10px 14px', fontSize: '0.8rem',
+        }}>
+          <div style={{ color: '#888', marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+            {label}
+          </div>
+          <div style={{ color: '#e8e8e8', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+            {payload[0].value.toLocaleString()} followers
+          </div>
+        </div>
+      );
+    }
+
+    function TimelineTab({ snapshots }) {
+      const sorted = useMemo(
+        () => [...snapshots].sort((a, b) => a.uploadedAt - b.uploadedAt),
+        [snapshots]
+      );
+
+      const chartData = useMemo(
+        () => sorted.map(s => ({
+          date: formatDateShort(s.uploadedAt),
+          followers: s.followers.length,
+        })),
+        [sorted]
+      );
+
+      const stats = useMemo(() => {
+        const counts = sorted.map(s => s.followers.length);
+        const peak = Math.max(...counts);
+        let biggestDrop = 0;
+        for (let i = 1; i < counts.length; i++) {
+          const drop = counts[i - 1] - counts[i];
+          if (drop > biggestDrop) biggestDrop = drop;
+        }
+        const totalLost = counts[0] - counts[counts.length - 1];
+        return { peak, biggestDrop, totalLost };
+      }, [sorted]);
+
+      return (
+        <div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData} margin={{ top: 8, right: 12, left: -16, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: '#888', fontSize: 11, fontFamily: 'DM Mono' }}
+                  axisLine={{ stroke: '#1e1e1e' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: '#888', fontSize: 11, fontFamily: 'DM Mono' }}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={['dataMin - 5', 'dataMax + 5']}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#333', strokeDasharray: '4 4' }} />
+                <Line
+                  type="monotone"
+                  dataKey="followers"
+                  stroke="#e1306c"
+                  strokeWidth={2.5}
+                  dot={{ fill: '#e1306c', r: 4, strokeWidth: 0 }}
+                  activeDot={{ fill: '#e1306c', r: 6, stroke: '#fff', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="summary-stats">
+            <div className="stat-card">
+              <div className="stat-value">{stats.peak.toLocaleString()}</div>
+              <div className="stat-label">Peak</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: stats.biggestDrop > 0 ? 'var(--accent)' : 'var(--text)' }}>
+                {stats.biggestDrop > 0 ? `-${stats.biggestDrop}` : '0'}
+              </div>
+              <div className="stat-label">Biggest drop</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: stats.totalLost > 0 ? 'var(--accent)' : stats.totalLost < 0 ? 'var(--green)' : 'var(--text)' }}>
+                {stats.totalLost > 0 ? `-${stats.totalLost}` : stats.totalLost < 0 ? `+${Math.abs(stats.totalLost)}` : '0'}
+              </div>
+              <div className="stat-label">Net change</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Snapshots Tab ──────────────────────────────────────────────
+    function SnapshotsTab({ snapshots, onDelete }) {
+      const sorted = useMemo(
+        () => [...snapshots].sort((a, b) => a.uploadedAt - b.uploadedAt),
+        [snapshots]
+      );
+      const bytes = useMemo(() => estimateStorageBytes(snapshots), [snapshots]);
+      const pct = Math.min(100, (bytes / MAX_STORAGE_BYTES) * 100);
+      const usedKB = (bytes / 1024).toFixed(1);
+      const maxKB = (MAX_STORAGE_BYTES / 1024).toFixed(0);
+
+      return (
+        <div>
+          <div className="snapshot-list">
+            {sorted.map((s, idx) => (
+              <div key={s.id} className="snapshot-row">
+                <div>
+                  <div className="snapshot-date">
+                    {formatDate(s.uploadedAt)}
+                    {idx === 0 && <span className="snapshot-baseline">baseline</span>}
+                  </div>
+                  <div className="snapshot-count">
+                    {s.followers.length.toLocaleString()} followers
+                  </div>
+                </div>
+                {idx > 0 && (
+                  <button className="delete-btn" onClick={() => onDelete(s.id)}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="storage-bar-wrap">
+            <div className="storage-bar-label">
+              <span>Storage</span>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>
+                {usedKB} KB / {maxKB} KB
+              </span>
+            </div>
+            <div className="storage-bar-track">
+              <div className="storage-bar-fill" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Dashboard ──────────────────────────────────────────────────
+    function Dashboard({ snapshots, onFile, onDelete }) {
+      const [tab, setTab] = useState('unfollowers');
+
+      const sorted = useMemo(
+        () => [...snapshots].sort((a, b) => a.uploadedAt - b.uploadedAt),
+        [snapshots]
+      );
+      const latest = sorted[sorted.length - 1];
+      const prev = sorted[sorted.length - 2];
+      const delta = latest.followers.length - prev.followers.length;
+
+      const unfollowCount = useMemo(() => detectUnfollows(snapshots).length, [snapshots]);
+
+      return (
+        <div>
+          <div className="header-bar">
+            <div>
+              <div className="follower-label">Followers</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className="follower-count">{latest.followers.length.toLocaleString()}</span>
+                <span className={`follower-delta ${
+                  delta < 0 ? 'delta-negative' : delta > 0 ? 'delta-positive' : 'delta-zero'
+                }`}>
+                  {delta > 0 ? '+' : ''}{delta}
+                  {delta < 0 ? ' \u{1F47B}' : delta > 0 ? ' \u{2728}' : ''}
+                </span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="follower-label">Snapshots</div>
+              <div className="follower-count" style={{ fontSize: '1.25rem' }}>
+                {snapshots.length}
+              </div>
+            </div>
+          </div>
+
+          <DropZone onFile={onFile} compact />
+
+          <div className="tab-bar">
+            <button
+              className={`tab-btn ${tab === 'unfollowers' ? 'active' : ''}`}
+              onClick={() => setTab('unfollowers')}
+            >
+              Unfollowers{unfollowCount > 0 ? ` (${unfollowCount})` : ''}
+            </button>
+            <button
+              className={`tab-btn ${tab === 'timeline' ? 'active' : ''}`}
+              onClick={() => setTab('timeline')}
+            >
+              Timeline
+            </button>
+            <button
+              className={`tab-btn ${tab === 'snapshots' ? 'active' : ''}`}
+              onClick={() => setTab('snapshots')}
+            >
+              Snapshots
+            </button>
+          </div>
+
+          {tab === 'unfollowers' && <UnfollowersTab snapshots={snapshots} />}
+          {tab === 'timeline' && <TimelineTab snapshots={snapshots} />}
+          {tab === 'snapshots' && <SnapshotsTab snapshots={snapshots} onDelete={onDelete} />}
+        </div>
+      );
+    }
+
+    // ── App ────────────────────────────────────────────────────────
+    function App() {
+      const [snapshots, setSnapshots] = useState(() => loadSnapshots());
+      const [loading, setLoading] = useState(false);
+      const [confirm, setConfirm] = useState(null);
+      const { toasts, addToast, removeToast } = useToasts();
+
+      const handleFile = useCallback(async (file) => {
+        if (!file.name.endsWith('.zip')) {
+          addToast('Please upload a .zip file', 'error');
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const followers = await parseZip(file);
+          const snapshot = {
+            id: generateId(),
+            uploadedAt: Date.now(),
+            followers,
+          };
+
+          // Check for duplicate (same count + same day)
+          const isDuplicate = snapshots.some(
+            s => s.followers.length === followers.length && sameDay(s.uploadedAt, snapshot.uploadedAt)
+          );
+
+          if (isDuplicate) {
+            setLoading(false);
+            setConfirm({
+              title: 'Possible duplicate',
+              message: `You already uploaded a snapshot today with the same follower count (${followers.length.toLocaleString()}). Save anyway?`,
+              onConfirm: () => {
+                const updated = [...snapshots, snapshot];
+                const result = saveSnapshots(updated);
+                if (result.ok) {
+                  setSnapshots(result.snapshots);
+                  addToast(`Snapshot saved — ${followers.length.toLocaleString()} followers`, 'success');
+                  if (result.evicted > 0) {
+                    addToast(`Evicted ${result.evicted} old snapshot(s) to free space`, 'warn');
+                  }
+                } else {
+                  addToast('Storage full — could not save snapshot', 'error');
+                }
+                setConfirm(null);
+              },
+              onCancel: () => setConfirm(null),
+            });
+            return;
+          }
+
+          const updated = [...snapshots, snapshot];
+          const result = saveSnapshots(updated);
+          if (result.ok) {
+            setSnapshots(result.snapshots);
+            addToast(`Snapshot saved — ${followers.length.toLocaleString()} followers`, 'success');
+            if (result.evicted > 0) {
+              addToast(`Evicted ${result.evicted} old snapshot(s) to free space`, 'warn');
+            }
+          } else {
+            addToast('Storage full — could not save snapshot', 'error');
+          }
+        } catch (err) {
+          addToast(err.message, 'error', 6000);
+        } finally {
+          setLoading(false);
+        }
+      }, [snapshots, addToast]);
+
+      const handleDelete = useCallback((id) => {
+        setConfirm({
+          title: 'Delete snapshot',
+          message: 'This snapshot and any unfollows detected from it will be removed. This cannot be undone.',
+          onConfirm: () => {
+            const updated = snapshots.filter(s => s.id !== id);
+            const result = saveSnapshots(updated);
+            if (result.ok) {
+              setSnapshots(result.snapshots);
+              addToast('Snapshot deleted', 'success');
+            }
+            setConfirm(null);
+          },
+          onCancel: () => setConfirm(null),
+        });
+      }, [snapshots, addToast]);
+
+      const showDashboard = snapshots.length >= 2;
+
+      return (
+        <div className="app">
+          <ToastContainer toasts={toasts} removeToast={removeToast} />
+          {loading && <SpinnerOverlay />}
+          {confirm && (
+            <ConfirmDialog
+              title={confirm.title}
+              message={confirm.message}
+              onConfirm={confirm.onConfirm}
+              onCancel={confirm.onCancel}
+            />
+          )}
+
+          {showDashboard
+            ? <Dashboard snapshots={snapshots} onFile={handleFile} onDelete={handleDelete} />
+            : <UploadScreen snapshots={snapshots} onFile={handleFile} />
+          }
+        </div>
+      );
+    }
+
+    // ── Mount ──────────────────────────────────────────────────────
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
