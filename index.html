@@ -346,6 +346,17 @@
     .recharts-cartesian-grid line { stroke: var(--border); }
     .recharts-text { fill: var(--text-muted) !important; font-family: var(--font-mono) !important; font-size: 0.7rem !important; }
 
+    /* ---- Footer ---- */
+    .footer {
+      text-align: center; padding: 32px 0 16px;
+      font-size: 0.75rem; color: var(--text-dim);
+    }
+    .footer a {
+      color: var(--text-muted); text-decoration: none; font-weight: 500;
+      transition: color 0.15s;
+    }
+    .footer a:hover { color: var(--accent); }
+
     /* ---- Responsive ---- */
     @media (min-width: 768px) {
       .app { max-width: 560px; padding: 24px; }
@@ -664,19 +675,28 @@
           <h2>How to export your data</h2>
           <ol>
             <li>
-              Open Instagram &rarr; <strong>Profile</strong> &rarr; <strong>Menu</strong> &rarr; <strong>Settings</strong> &rarr; <strong>Account Centre</strong>
+              Go to <a href="https://accountscenter.instagram.com/info_and_permissions/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>Your information and permissions</a>
             </li>
             <li>
-              <strong>Your information and permissions</strong> &rarr; <strong>Download your information</strong>
+              <strong>Export your information</strong>
             </li>
             <li>
-              Select <strong>"Some of your information"</strong> &rarr; check <strong>Followers and following</strong>
+              <strong>Create Export</strong>
             </li>
             <li>
-              Set format to <strong>JSON</strong> and date range to <strong>All time</strong>
+              <strong>Export to device</strong>
             </li>
             <li>
-              Request download, wait for the email, then <strong>drop the ZIP here</strong>
+              Custom information: deselect all, only select <strong>Connections: Followers and following</strong>
+            </li>
+            <li>
+              Date range: <strong>All time</strong>
+            </li>
+            <li>
+              Format: <strong>JSON</strong> &middot; Media quality: <strong>Low</strong>
+            </li>
+            <li>
+              Wait for the export, download it, then <strong>drop the ZIP here</strong>
             </li>
           </ol>
         </div>
@@ -1106,6 +1126,10 @@
             ? <Dashboard snapshots={snapshots} onFile={handleFile} onDelete={handleDelete} />
             : <UploadScreen snapshots={snapshots} onFile={handleFile} />
           }
+
+          <footer className="footer">
+            Made with 🔥 by <a href="https://github.com/rops" target="_blank" rel="noopener noreferrer">rops</a>
+          </footer>
         </div>
       );
     }
